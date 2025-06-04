@@ -1,0 +1,48 @@
+version: "3.8"
+
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: basicdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgresdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+
+  wait:
+    image: dokku/wait
+    container_name: wait-for-postgres
+    command: postgres:5432
+
+
+  appserver:
+    container_name: appserver
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - wait
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/basicdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    restart: on-failure
+
+
+  newman:
+    image: pstauffer/newman-htmlextra
+    container_name: newman
+    volumes:
+      - ./test:/etc/newman
+    entrypoint: tail -f /dev/null
